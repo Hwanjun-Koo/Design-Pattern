@@ -1,4 +1,4 @@
-class BasicRamenRecipe:#Abstract
+class BasicRamenRecipe:#Abstract class
     
     def __init__(self):
         print("Basic Recipe\n")
