@@ -13,30 +13,30 @@ class DeliveryObserver(Observer):
         self.root.geometry("400x200")
         self.label = tk.Label(self.root, text="")
         self.label.pack()
+        self.root.withdraw()
+        
+    def clear_label_and_close_window(self):
+        self.label.config(text="")
+        self.root.withdraw()  # Hide the window
+        
+    def show_message(self, message):
+        self.root.deiconify()  # Show the window
+        self.label.config(text = message)
+        self.root.after(2000, self.clear_label_and_close_window)
         
     def update(self, state):
         if state == "요리 중":
             print(f"현재 배달 상태: {state}")
-            self.label.config(text="주문이 접수되었습니다.")  # 알림 메시지 설정
-            self.root.after(2000, self.clear_label_and_close_window)
-            self.root.mainloop()
+            self.show_message("주문이 접수되었습니다.")
         elif state == "배달 출발":
             print(f"현재 배달 상태: {state}")
-            self.label.config(text="배달이 시작되었습니다.")  # 알림 메시지 설정
-            self.root.after(2000, self.clear_label_and_close_window)
-            self.root.mainloop()
+            self.show_message("배달이 시작되었습니다.")
+        elif state == "배달 완료":
+            print(f"현재 배달 상태: {state}")
+            self.show_message("배달이 완료되었습니다. 맛있게 드세요^^")
         else:
             print(f"현재 배달 상태: {state}")
-            
-    def clear_label(self):
-        self.label.config(text="")
-        
-    def close_window(self):
-        self.root.destroy()
-    
-    def clear_label_and_close_window(self):
-        self.clear_label()
-        self.close_window()
+                      
 #옵저버가 관찰할 식당   
 class Restaurant:
     def __init__(self):
@@ -109,12 +109,18 @@ class DeliveryProcess:
         self.proto_order = OrderPrototype()
         self.default_order = self.proto_order.create("", "", "", "", True, "")
         
+    def update_state(self, states):
+        if states:
+            self.restaurant.setState(states[0])
+            self.observer.root.after(1000, self.update_state, states[1:])
+        else:
+            self.default_order.order()
+            self.observer.root.quit()
+        
     def order_process(self):
-        states = ["주문 접수", "요리 중", "배달 출발", "배달 중", "배달 도착"]
-        for state in states:
-            self.restaurant.setState(state)
-            time.sleep(1)
-        self.default_order.order()
+        states = ["주문 접수", "요리 중", "배달 출발", "배달 중", "배달 완료"]
+        self.observer.root.after(0, self.update_state, states)
+        self.observer.root.mainloop()
                 
 facade = DeliveryProcess()
 facade.order_process()    
