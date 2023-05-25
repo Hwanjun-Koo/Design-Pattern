@@ -46,9 +46,11 @@ class DeliveryObserver(Observer):
                       
 #옵저버가 관찰할 식당   
 class Restaurant:
-    def __init__(self):
+    def __init__(self, name, menu):
         self.observers = []
         self.state = None
+        self.name = name
+        self.menu = menu
         
     def register(self, observer):
         self.observers.append(observer)
@@ -60,6 +62,26 @@ class Restaurant:
     def setState(self, state):
         self.state = state
         self.notify()
+
+#식당들을 저장할 데이터베이스를 Singleton 패턴으로 구축
+class RestaurantDatabase:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            print("Creating new Restaurant Database instance")
+            cls._instance = super(RestaurantDatabase, cls).__new__(cls)
+            cls._instance._init()
+        return cls._instance
+
+    def _init(self):
+        self.restaurants = {}
+
+    def add_restaurant(self, restaurant):
+        self.restaurants[restaurant.name] = restaurant
+
+    def get_restaurant(self, name):
+        return self.restaurants.get(name, None)
 
 #주문서 작성 양식과 배달 완료 시 표시할 영수증을 Prototype 패턴으로 작성           
 class OrderForm:
@@ -101,13 +123,13 @@ class OrderPrototype:
     def __init__(self):
         self.order = OrderForm("", "", "", "", True, "")
         
-    def create(self, food:str, customer:str, address:str, vehicle:str, plastic:bool, request:str) -> OrderForm:
-        self.order.food = food
-        self.order.customer = customer
-        self.order.address = address
-        self.order.vehicle = vehicle
-        self.order.plastic = plastic
-        self.order.request = request
+    def create(self) -> OrderForm:
+        self.order.food = input("주문할 음식: ")
+        self.order.customer = input("주문자 이름: ")
+        self.order.address = input("배달할 주소: ")
+        self.order.vehicle = input("배달 방법: ")
+        self.order.plastic = bool(input("일회용품 사용하시나요? (예: y키 입력 후 Enter키, 아니오: Enter키) "))
+        self.order.request = input("추가 요청 사항: ")
         return self.order.clone()
     
 #주문 상태를 자동으로 업데이트 시켜주는 Facade 패턴     
@@ -117,19 +139,19 @@ class DeliveryProcess:
         self.observer = DeliveryObserver()
         self.restaurant.register(self.observer)
         self.proto_order = OrderPrototype()
-        self.default_order = self.proto_order.create("", "", "", "", True, "")
+        self.current_order = self.proto_order.create()
         
     def update_state(self, states):
         if states:
             self.restaurant.setState(states[0])
             if states[0] == "배달 완료":
-                receipt_text = self.default_order.receipt(10000)
+                receipt_text = self.current_order.receipt(10000)
                 self.observer.show_receipt(receipt_text)
                 self.observer.root.after(1000, self.update_state, states[1:])
             else:
                 self.observer.root.after(1000, self.update_state, states[1:])
         else:
-            self.default_order.order()
+            self.current_order.order()
             self.observer.root.quit()
         
     def order_process(self):
