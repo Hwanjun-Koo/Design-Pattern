@@ -13,22 +13,23 @@ class DeliveryObserver(Observer):
         self.root.geometry("400x200")
         self.label = tk.Label(self.root, text="")
         self.label.pack()
-        self.root.withdraw()
+        self.root.withdraw() # 창 숨기기
         
     def clear_label_and_close_window(self):
         self.label.config(text="")
-        self.root.withdraw()  # Hide the window
+        self.root.withdraw()  
         
     def show_message(self, message):
-        self.root.deiconify()  # Show the window
+        self.root.deiconify()  # 창 띄우기
         self.label.config(text = message)
-        self.root.after(2000, self.clear_label_and_close_window)
+
         
     def show_receipt(self, receipt_text):
-        self.root.deiconify()  # Show the window
+        self.root.deiconify()  
         self.text = tk.Text(self.root)
         self.text.pack()
         self.text.insert(tk.END, receipt_text)
+        
         
 
     def update(self, state):
@@ -83,6 +84,9 @@ class RestaurantDatabase:
     def get_restaurant(self, name):
         return self.restaurants.get(name, None)
 
+    def get_all(self):
+        return list(self.restaurants.values())
+
 #주문서 작성 양식과 배달 완료 시 표시할 영수증을 Prototype 패턴으로 작성           
 class OrderForm:
     def __init__(self, food:str, customer:str, address:str, vehicle:str, plastic:bool, request:str):
@@ -120,26 +124,37 @@ class OrderForm:
         return copy.deepcopy(self)
     
 class OrderPrototype:
-    def __init__(self):
+    def __init__(self, restaurant_db):
         self.order = OrderForm("", "", "", "", True, "")
+        self.restaurant_db = restaurant_db
         
     def create(self) -> OrderForm:
-        self.order.food = input("주문할 음식: ")
+        print("다음 중 식당을 선택해 주세요.")
+        restaurant_names = [restaurant.name for restaurant in self.restaurant_db.get_all()]
+        for i, restaurant_name in enumerate(restaurant_names, start=1):
+            print(f"{i}. {restaurant_name}")
+        chosen_restaurant = self.restaurant_db.get_restaurant(restaurant_names[int(input()) - 1])
+        
+        print("다음 중 음식을 선택해 주세요.")
+        for i, (food, _) in enumerate(chosen_restaurant.menu.items(), start=1):
+            print(f"{i}. {food}")
+        chosen_food = list(chosen_restaurant.menu.keys())[int(input()) - 1]
+        
+        self.order.food = chosen_food
         self.order.customer = input("주문자 이름: ")
         self.order.address = input("배달할 주소: ")
         self.order.vehicle = input("배달 방법: ")
         self.order.plastic = bool(input("일회용품 사용하시나요? (예: y키 입력 후 Enter키, 아니오: Enter키) "))
         self.order.request = input("추가 요청 사항: ")
-        return self.order.clone()
+        return self.order.clone(), chosen_restaurant
     
 #주문 상태를 자동으로 업데이트 시켜주는 Facade 패턴     
 class DeliveryProcess:
-    def __init__(self):
-        self.restaurant = Restaurant()
+    def __init__(self, restaurant_db):
         self.observer = DeliveryObserver()
+        self.proto_order = OrderPrototype(restaurant_db)
+        self.current_order, self.restaurant = self.proto_order.create()
         self.restaurant.register(self.observer)
-        self.proto_order = OrderPrototype()
-        self.current_order = self.proto_order.create()
         
     def update_state(self, states):
         if states:
@@ -152,15 +167,24 @@ class DeliveryProcess:
                 self.observer.root.after(1000, self.update_state, states[1:])
         else:
             self.current_order.order()
-            self.observer.root.quit()
+    
         
     def order_process(self):
         states = ["주문 접수", "요리 중", "배달 출발", "배달 중", "배달 완료"]
-        self.observer.root.after(0, self.update_state, states)
+        self.observer.root.after(1000, self.update_state, states)
         self.observer.root.mainloop()
-                
-facade = DeliveryProcess()
-facade.order_process()    
+
+# 식당 데이터베이스를 생성
+restaurant_db = RestaurantDatabase()
+
+# 식당과 메뉴를 추가.
+restaurant_db.add_restaurant(Restaurant("A", {"음식1": 10, "음식2": 15}))
+restaurant_db.add_restaurant(Restaurant("B", {"음식3": 20, "음식4": 25}))
+restaurant_db.add_restaurant(Restaurant("C", {"음식5": 30, "음식6": 35}))
+
+
+delivery = DeliveryProcess(restaurant_db)
+delivery.order_process()    
 
 
     
