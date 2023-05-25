@@ -2,6 +2,7 @@ import time
 import copy
 import tkinter as tk
 
+
 #배달 상태를 관찰하고 알림을 보내는 옵저버 생성
 class Observer:
     def update(self):
@@ -96,18 +97,9 @@ class OrderForm:
         self.vehicle = vehicle
         self.plastic = plastic
         self.request = request
-        
-    def order(self):
-        self.usingPlastic = "O" if self.plastic else "X"
-        print(f"메뉴명: {self.food}")
-        print(f"주문자: {self.customer}")
-        print(f"주소: {self.address}")
-        print(f"배달 방식: {self.vehicle}")
-        print(f"일회용품 사용 여부: {self.usingPlastic}")
-        print(f"요청사항: {self.request}")
+        self.total_price = 0
     
-    def receipt(self,total_price):
-        self.total_price = total_price
+    def receipt(self):
         self.usingPlastic = "O" if self.plastic else "X"
         receipt_text = f"""
         메뉴명: {self.food}
@@ -146,6 +138,7 @@ class OrderPrototype:
         self.order.vehicle = input("배달 방법: ")
         self.order.plastic = bool(input("일회용품 사용하시나요? (예: y키 입력 후 Enter키, 아니오: Enter키) "))
         self.order.request = input("추가 요청 사항: ")
+        self.order.total_price = chosen_restaurant.menu[chosen_food]
         return self.order.clone(), chosen_restaurant
     
 #주문 상태를 자동으로 업데이트 시켜주는 Facade 패턴     
@@ -160,13 +153,12 @@ class DeliveryProcess:
         if states:
             self.restaurant.setState(states[0])
             if states[0] == "배달 완료":
-                receipt_text = self.current_order.receipt(10000)
+                receipt_text = self.current_order.receipt()
                 self.observer.show_receipt(receipt_text)
                 self.observer.root.after(1000, self.update_state, states[1:])
             else:
                 self.observer.root.after(1000, self.update_state, states[1:])
-        else:
-            self.current_order.order()
+
     
         
     def order_process(self):
