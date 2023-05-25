@@ -24,6 +24,13 @@ class DeliveryObserver(Observer):
         self.label.config(text = message)
         self.root.after(2000, self.clear_label_and_close_window)
         
+    def show_receipt(self, receipt_text):
+        self.root.deiconify()  # Show the window
+        self.text = tk.Text(self.root)
+        self.text.pack()
+        self.text.insert(tk.END, receipt_text)
+        
+
     def update(self, state):
         if state == "요리 중":
             print(f"현재 배달 상태: {state}")
@@ -54,7 +61,7 @@ class Restaurant:
         self.state = state
         self.notify()
 
-#주문서 작성 양식을 Prototype 패턴으로 작성           
+#주문서 작성 양식과 배달 완료 시 표시할 영수증을 Prototype 패턴으로 작성           
 class OrderForm:
     def __init__(self, food:str, customer:str, address:str, vehicle:str, plastic:bool, request:str):
         self.food = food
@@ -76,13 +83,16 @@ class OrderForm:
     def receipt(self,total_price):
         self.total_price = total_price
         self.usingPlastic = "O" if self.plastic else "X"
-        print(f"메뉴명: {self.food}")
-        print(f"주문자: {self.customer}")
-        print(f"주소: {self.address}")
-        print(f"배달 방식: {self.vehicle}")
-        print(f"일회용품 사용 여부: {self.usingPlastic}")
-        print(f"요청사항: {self.request}")
-        print(f"총 금액: {self.total_price}")
+        receipt_text = f"""
+        메뉴명: {self.food}
+        주문자: {self.customer}
+        주소: {self.address}
+        배달 방식: {self.vehicle}
+        일회용품 사용 여부: {self.usingPlastic}
+        요청사항: {self.request}
+        총 금액: {self.total_price}
+        """
+        return receipt_text
     
     def clone(self):
         return copy.deepcopy(self)
@@ -112,7 +122,12 @@ class DeliveryProcess:
     def update_state(self, states):
         if states:
             self.restaurant.setState(states[0])
-            self.observer.root.after(1000, self.update_state, states[1:])
+            if states[0] == "배달 완료":
+                receipt_text = self.default_order.receipt(10000)
+                self.observer.show_receipt(receipt_text)
+                self.observer.root.after(1000, self.update_state, states[1:])
+            else:
+                self.observer.root.after(1000, self.update_state, states[1:])
         else:
             self.default_order.order()
             self.observer.root.quit()
