@@ -2,7 +2,6 @@ import time
 import copy
 import tkinter as tk
 
-
 #배달 상태를 관찰하고 알림을 보내는 옵저버 생성
 class Observer:
     def update(self):
@@ -31,12 +30,10 @@ class DeliveryObserver(Observer):
         self.text.pack()
         self.text.insert(tk.END, receipt_text)
         
-        
-
     def update(self, state):
         if state == "요리 중":
-            print(f"현재 배달 상태: {state}")
             self.show_message("주문이 접수되었습니다.")
+            print(f"현재 배달 상태: {state}")
         elif state == "배달 출발":
             print(f"현재 배달 상태: {state}")
             self.show_message("배달이 시작되었습니다.")
@@ -65,6 +62,7 @@ class Restaurant:
         self.state = state
         self.notify()
 
+    
 #식당들을 저장할 데이터베이스를 Singleton 패턴으로 구축
 class RestaurantDatabase:
     _instance = None
@@ -138,10 +136,12 @@ class OrderPrototype:
             print(f"{i}. {food}")
         food_choices = input("메뉴 앞 번호를 입력해 주세요(복수 선택 가능, 공백으로 구분해주세요): ").split(" ")
         food_list= []
+        total_cooking_time = 0
         for choice in food_choices:
             food_index = int(choice.strip()) - 1
             chosen_food = list(chosen_restaurant.menu.keys())[food_index]
             food_list.append(chosen_food)
+            total_cooking_time += chosen_restaurant.menu[chosen_food][1]
         print(food_list)
         
         self.order.food = food_list
@@ -150,10 +150,12 @@ class OrderPrototype:
         self.order.vehicle = input("배달 방법: ")
         self.order.plastic = bool(input("일회용품 사용하시나요? (예: y키 입력 후 Enter키, 아니오: Enter키) "))
         self.order.request = input("추가 요청 사항: ")
-        self.order.total_price = sum(chosen_restaurant.menu[food] for food in food_list)
+        self.order.total_price = sum(chosen_restaurant.menu[food][0] for food in food_list)
         self.order.restaurant_name = chosen_restaurant.name
         return self.order.clone(), chosen_restaurant
     
+        
+
 #주문 상태를 자동으로 업데이트 시켜주는 Facade 패턴     
 class DeliveryProcess:
     def __init__(self, restaurant_db):
@@ -161,29 +163,29 @@ class DeliveryProcess:
         self.proto_order = OrderPrototype(restaurant_db)
         self.current_order, self.restaurant = self.proto_order.create()
         self.restaurant.register(self.observer)
+        self.cooking_time = sum(self.restaurant.menu[food][1] for food in self.current_order.food)
         
     def update_state(self, states):
         if states:
             self.restaurant.setState(states[0])
-            if states[0] == "배달 완료":
+            if states[0] == "요리 중":
+                self.observer.root.after(self.cooking_time * 1000, self.update_state, states[1:])
+            elif states[0] == "배달 완료":
                 receipt_text = self.current_order.receipt()
                 self.observer.show_receipt(receipt_text)
-                self.observer.root.after(1000, self.update_state, states[1:])
             else:
                 self.observer.root.after(1000, self.update_state, states[1:])
 
-    
-        
     def order_process(self):
         states = ["주문 접수", "요리 중", "배달 출발", "배달 중", "배달 완료"]
-        self.observer.root.after(1000, self.update_state, states)
+        self.update_state(states)
         self.observer.root.mainloop()
 
 # 식당 데이터베이스를 생성
 restaurant_db = RestaurantDatabase()
 
 # 식당과 메뉴를 추가.
-restaurant_db.add_restaurant(Restaurant("A", {"음식1": 10, "음식2": 15}))
+restaurant_db.add_restaurant(Restaurant("A", {"음식1": (10, 3),  "음식2": (15, 2)}))
 restaurant_db.add_restaurant(Restaurant("B", {"음식3": 20, "음식4": 25}))
 restaurant_db.add_restaurant(Restaurant("C", {"음식5": 30, "음식6": 35}))
 
