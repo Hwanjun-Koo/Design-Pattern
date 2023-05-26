@@ -71,7 +71,8 @@ class RestaurantDatabase:
 
     def __new__(cls):
         if cls._instance is None:
-            print("Creating new Restaurant Database instance")
+            print("식당 목록 불러오는중..")
+            time.sleep(1)
             cls._instance = super(RestaurantDatabase, cls).__new__(cls)
             cls._instance._init()
         return cls._instance
@@ -90,7 +91,7 @@ class RestaurantDatabase:
 
 #주문서 작성 양식과 배달 완료 시 표시할 영수증을 Prototype 패턴으로 작성           
 class OrderForm:
-    def __init__(self, food:str, customer:str, address:str, vehicle:str, plastic:bool, request:str):
+    def __init__(self, food:str, customer:str, address:str, vehicle:str, plastic:bool, request:str, restaurant_name:str):
         self.food = food
         self.customer = customer
         self.address = address
@@ -98,10 +99,13 @@ class OrderForm:
         self.plastic = plastic
         self.request = request
         self.total_price = 0
+        self.restaurant_name = restaurant_name
+        
     
     def receipt(self):
         self.usingPlastic = "O" if self.plastic else "X"
         receipt_text = f"""
+        가게명:{self.restaurant_name}
         메뉴명: {self.food}
         주문자: {self.customer}
         주소: {self.address}
@@ -117,28 +121,37 @@ class OrderForm:
     
 class OrderPrototype:
     def __init__(self, restaurant_db):
-        self.order = OrderForm("", "", "", "", True, "")
+        self.order = OrderForm("", "", "", "", True, "", "")
         self.restaurant_db = restaurant_db
         
     def create(self) -> OrderForm:
         print("다음 중 식당을 선택해 주세요.")
+        time.sleep(0.5)
         restaurant_names = [restaurant.name for restaurant in self.restaurant_db.get_all()]
         for i, restaurant_name in enumerate(restaurant_names, start=1):
             print(f"{i}. {restaurant_name}")
         chosen_restaurant = self.restaurant_db.get_restaurant(restaurant_names[int(input()) - 1])
         
-        print("다음 중 음식을 선택해 주세요.")
+        print("다음 중 음식을 선택해 주세요")
+        time.sleep(0.5)
         for i, (food, _) in enumerate(chosen_restaurant.menu.items(), start=1):
             print(f"{i}. {food}")
-        chosen_food = list(chosen_restaurant.menu.keys())[int(input()) - 1]
+        food_choices = input("메뉴 앞 번호를 입력해 주세요(복수 선택 가능, 공백으로 구분해주세요): ").split(" ")
+        food_list= []
+        for choice in food_choices:
+            food_index = int(choice.strip()) - 1
+            chosen_food = list(chosen_restaurant.menu.keys())[food_index]
+            food_list.append(chosen_food)
+        print(food_list)
         
-        self.order.food = chosen_food
+        self.order.food = food_list
         self.order.customer = input("주문자 이름: ")
         self.order.address = input("배달할 주소: ")
         self.order.vehicle = input("배달 방법: ")
         self.order.plastic = bool(input("일회용품 사용하시나요? (예: y키 입력 후 Enter키, 아니오: Enter키) "))
         self.order.request = input("추가 요청 사항: ")
-        self.order.total_price = chosen_restaurant.menu[chosen_food]
+        self.order.total_price = sum(chosen_restaurant.menu[food] for food in food_list)
+        self.order.restaurant_name = chosen_restaurant.name
         return self.order.clone(), chosen_restaurant
     
 #주문 상태를 자동으로 업데이트 시켜주는 Facade 패턴     
