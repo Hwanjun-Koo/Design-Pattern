@@ -23,7 +23,6 @@ class DeliveryObserver(Observer):
         self.root.deiconify()  # 창 띄우기
         self.label.config(text = message)
 
-        
     def show_receipt(self, receipt_text):
         self.root.deiconify()  
         self.text = tk.Text(self.root)
@@ -147,7 +146,7 @@ class OrderPrototype:
         self.order.food = food_list
         self.order.customer = input("주문자 이름: ")
         self.order.address = input("배달할 주소: ")
-        self.order.vehicle = input("배달 방법: ")
+        self.order.vehicle = print("배달 방법: ")
         for i, (vehicle, _) in enumerate(chosen_restaurant.vehicles.items(), start=1):
             print(f"{i}. {vehicle}")
         vehicle_choice = int(input()) - 1
@@ -196,13 +195,5 @@ restaurant_db = RestaurantDatabase()
 # 식당과 메뉴를 추가.
 restaurant_db.add_restaurant(Restaurant("A", {"음식1": (10, 3),  "음식2": (15, 2)}, {"도보": 5, "오토바이": 1}))
 
-
-
 delivery = DeliveryProcess(restaurant_db)
-delivery.order_process()    
-
-
-    
-        
-        
-
+delivery.order_process()
