@@ -170,10 +170,7 @@ class OrderPrototype:
         self.order.restaurant_name = chosen_restaurant.name
         self.order.vehicle = chosen_vehicle
         return self.order.clone(), chosen_restaurant
-    
-        
-
-#주문 상태를 자동으로 업데이트 시켜주는 Facade 패턴     
+#주문 상태를 자동으로 업데이트 시켜주는 프로세스를 Facade 패턴으로 구현    
 class DeliveryProcess:
     def __init__(self, restaurant_db):
         self.observer = DeliveryObserver()
@@ -207,7 +204,8 @@ restaurant_db = RestaurantDatabase()
 
 # 식당과 메뉴를 추가.
 restaurant_db.add_restaurant(Restaurant("상하이 반점", {"짜장면": (7000, 3),  "탕수육": (15000, 5), "짬뽕": (8000, 3)}, {"도보": 5, "오토바이": 2}))
-restaurant_db.add_restaurant(Restaurant("호나준 스시", {"스페셜 특선 초밥(16pcs)": (17000, 5),  "오늘의 초밥(12pcs)": (15000, 3), "연어 초밥(12pcs)": (12000, 3)}, {"도보": 5, "오토바이": 2}))
+restaurant_db.add_restaurant(Restaurant("호나준 스시", {"스페셜 특선 초밥(16pcs)": (
+    17000, 5),  "오늘의 초밥(12pcs)": (15000, 3), "연어 초밥(12pcs)": (12000, 3)}, {"도보": 5, "오토바이": 2}))
 
 delivery = DeliveryProcess(restaurant_db)
 delivery.order_process()
