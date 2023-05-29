@@ -1,10 +1,14 @@
 import time
 import copy
 import tkinter as tk
+from DeliveryUI import DeliveryUI
 
 #배달 상태를 관찰하고 알림을 보내는 옵저버 생성
 class Observer:
     def update(self):
+        pass
+    
+    def start_ui(self):
         pass
 
 class DeliveryObserver(Observer):
@@ -36,12 +40,19 @@ class DeliveryObserver(Observer):
         elif state == "배달 출발":
             print(f"현재 배달 상태: {state}")
             self.show_message("배달이 시작되었습니다.")
+        elif state == "배달 중":
+            print(f"현재 배달 상태: {state}")
+            self.show_message("배달 중...")
+            
         elif state == "배달 완료":
             print(f"현재 배달 상태: {state}")
             self.show_message("배달이 완료되었습니다. 맛있게 드세요^^")
         else:
             print(f"현재 배달 상태: {state}")
-                      
+            
+    def start_ui(self, delivery_time):
+        ui = DeliveryUI(delivery_time)
+        ui.start()
 #옵저버가 관찰할 식당   
 class Restaurant:
     def __init__(self, name, menu, vehicles):
@@ -110,7 +121,7 @@ class OrderForm:
         배달 방식: {self.vehicle}
         일회용품 사용 여부: {self.usingPlastic}
         요청사항: {self.request}
-        총 금액: {self.total_price}
+        총 금액: {self.total_price} 원
         """
         return receipt_text
     
@@ -146,7 +157,7 @@ class OrderPrototype:
         self.order.food = food_list
         self.order.customer = input("주문자 이름: ")
         self.order.address = input("배달할 주소: ")
-        self.order.vehicle = print("배달 방법: ")
+        print("배달 방법: ")
         for i, (vehicle, _) in enumerate(chosen_restaurant.vehicles.items(), start=1):
             print(f"{i}. {vehicle}")
         vehicle_choice = int(input()) - 1
@@ -157,6 +168,7 @@ class OrderPrototype:
         self.order.request = input("추가 요청 사항: ")
         self.order.total_price = sum(chosen_restaurant.menu[food][0] for food in food_list)
         self.order.restaurant_name = chosen_restaurant.name
+        self.order.vehicle = chosen_vehicle
         return self.order.clone(), chosen_restaurant
     
         
@@ -177,7 +189,8 @@ class DeliveryProcess:
             if states[0] == "요리 중":
                 self.observer.root.after(self.cooking_time * 1000, self.update_state, states[1:])
             elif states[0] == "배달 중":
-                self.observer.root.after(self.delivery_time * 1000, self.update_state, states[1:])
+                self.observer.start_ui(self.delivery_time)
+                self.update_state(states[1:])
             elif states[0] == "배달 완료":
                 receipt_text = self.current_order.receipt()
                 self.observer.show_receipt(receipt_text)
@@ -193,7 +206,8 @@ class DeliveryProcess:
 restaurant_db = RestaurantDatabase()
 
 # 식당과 메뉴를 추가.
-restaurant_db.add_restaurant(Restaurant("A", {"음식1": (10, 3),  "음식2": (15, 2)}, {"도보": 5, "오토바이": 1}))
+restaurant_db.add_restaurant(Restaurant("상하이 반점", {"짜장면": (7000, 3),  "탕수육": (15000, 5), "짬뽕": (8000, 3)}, {"도보": 5, "오토바이": 2}))
+restaurant_db.add_restaurant(Restaurant("호나준 스시", {"스페셜 특선 초밥(16pcs)": (17000, 5),  "오늘의 초밥(12pcs)": (15000, 3), "연어 초밥(12pcs)": (12000, 3)}, {"도보": 5, "오토바이": 2}))
 
 delivery = DeliveryProcess(restaurant_db)
 delivery.order_process()
