@@ -50,8 +50,8 @@ class DeliveryObserver(Observer):
         else:
             print(f"현재 배달 상태: {state}")
             
-    def start_ui(self, delivery_time):
-        ui = DeliveryUI(delivery_time)
+    def start_ui(self, chosen_vehicle, delivery_time):
+        ui = DeliveryUI(chosen_vehicle, delivery_time)
         ui.start()
 #옵저버가 관찰할 식당   
 class Restaurant:
@@ -134,6 +134,7 @@ class OrderPrototype:
         self.restaurant_db = restaurant_db
         
     def create(self) -> OrderForm:
+        
         print("다음 중 식당을 선택해 주세요.")
         time.sleep(0.5)
         restaurant_names = [restaurant.name for restaurant in self.restaurant_db.get_all()]
@@ -151,12 +152,13 @@ class OrderPrototype:
             food_index = int(choice.strip()) - 1
             chosen_food = list(chosen_restaurant.menu.keys())[food_index]
             food_list.append(chosen_food)
-      
         print(food_list)
-        
         self.order.food = food_list
+        
         self.order.customer = input("주문자 이름: ")
+        
         self.order.address = input("배달할 주소: ")
+        
         print("배달 방법: ")
         for i, (vehicle, _) in enumerate(chosen_restaurant.vehicles.items(), start=1):
             print(f"{i}. {vehicle}")
@@ -165,10 +167,13 @@ class OrderPrototype:
         self.order.delivery_time = chosen_restaurant.vehicles[chosen_vehicle]
         
         self.order.plastic = bool(input("일회용품 사용하시나요? (예: y키 입력 후 Enter키, 아니오: Enter키) "))
+        
         self.order.request = input("추가 요청 사항: ")
+        
         self.order.total_price = sum(chosen_restaurant.menu[food][0] for food in food_list)
         self.order.restaurant_name = chosen_restaurant.name
         self.order.vehicle = chosen_vehicle
+        
         return self.order.clone(), chosen_restaurant
 #주문 상태를 자동으로 업데이트 시켜주는 프로세스를 Facade 패턴으로 구현    
 class DeliveryProcess:
@@ -178,6 +183,7 @@ class DeliveryProcess:
         self.current_order, self.restaurant = self.proto_order.create()
         self.restaurant.register(self.observer)
         self.cooking_time = sum(self.restaurant.menu[food][1] for food in self.current_order.food)
+        self.vehicle = self.current_order.vehicle
         self.delivery_time = self.current_order.delivery_time
         
     def update_state(self, states):
@@ -186,7 +192,7 @@ class DeliveryProcess:
             if states[0] == "요리 중":
                 self.observer.root.after(self.cooking_time * 1000, self.update_state, states[1:])
             elif states[0] == "배달 중":
-                self.observer.start_ui(self.delivery_time)
+                self.observer.start_ui(self.vehicle, self.delivery_time)
                 self.update_state(states[1:])
             elif states[0] == "배달 완료":
                 receipt_text = self.current_order.receipt()
