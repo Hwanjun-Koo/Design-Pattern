@@ -2,6 +2,7 @@ import time
 import copy
 import tkinter as tk
 from DeliveryUI import DeliveryUI
+from DeliveryApp import DeliveryApp
 
 #배달 상태를 관찰하고 알림을 보내는 옵저버 생성
 class Observer:
@@ -80,8 +81,6 @@ class RestaurantDatabase:
 
     def __new__(cls):
         if cls._instance is None:
-            print("식당 목록 불러오는중..")
-            time.sleep(1)
             cls._instance = super(RestaurantDatabase, cls).__new__(cls)
             cls._instance._init()
         return cls._instance
@@ -110,7 +109,6 @@ class OrderForm:
         self.total_price = 0
         self.restaurant_name = restaurant_name
         
-    
     def receipt(self):
         self.usingPlastic = "O" if self.plastic else "X"
         receipt_text = f"""
@@ -133,74 +131,38 @@ class OrderPrototype:
         self.order = OrderForm("", "", "", "", True, "", "")
         self.restaurant_db = restaurant_db
         
-    def create(self) -> OrderForm:
-        
-        print("다음 중 식당을 선택해 주세요.")
-        time.sleep(0.5)
-        restaurant_names = [restaurant.name for restaurant in self.restaurant_db.get_all()]
-        for i, restaurant_name in enumerate(restaurant_names, start=1):
-            print(f"{i}. {restaurant_name}")
-        chosen_restaurant = self.restaurant_db.get_restaurant(restaurant_names[int(input()) - 1])
-        
-        print("다음 중 음식을 선택해 주세요")
-        time.sleep(0.5)
-        for i, (food, _) in enumerate(chosen_restaurant.menu.items(), start=1):
-            print(f"{i}. {food}")
-        food_choices = input("메뉴 앞 번호를 입력해 주세요(복수 선택 가능, 공백으로 구분해주세요): ").split(" ")
-        food_list= []
-        for choice in food_choices:
-            food_index = int(choice.strip()) - 1
-            chosen_food = list(chosen_restaurant.menu.keys())[food_index]
-            food_list.append(chosen_food)
-        print(food_list)
-        self.order.food = food_list
-        
-        self.order.customer = input("주문자 이름: ")
-        
-        self.order.address = input("배달할 주소: ")
-        
-        print("배달 방법: ")
-        for i, (vehicle, _) in enumerate(chosen_restaurant.vehicles.items(), start=1):
-            print(f"{i}. {vehicle}")
-        vehicle_choice = int(input()) - 1
-        chosen_vehicle = list(chosen_restaurant.vehicles.keys())[vehicle_choice]
-        self.order.delivery_time = chosen_restaurant.vehicles[chosen_vehicle]
-        
-        self.order.plastic = bool(input("일회용품 사용하시나요? (예: y키 입력 후 Enter키, 아니오: Enter키) "))
-        
-        self.order.request = input("추가 요청 사항: ")
-        
-        self.order.total_price = sum(chosen_restaurant.menu[food][0] for food in food_list)
-        self.order.restaurant_name = chosen_restaurant.name
-        self.order.vehicle = chosen_vehicle
-        
-        return self.order.clone(), chosen_restaurant
+    def create(self, restaurant_name:str, food:str, customer:str, address:str, vehicle:str, plastic:str, request:str) -> OrderForm:
+        new_order = self.order.clone()
+        new_order.restaurant_name = restaurant_name
+        new_order.food = food
+        new_order.customer = customer
+        new_order.address = address
+        new_order.vehicle = vehicle
+        new_order.plastic = bool(plastic.lower() == "true")
+        new_order.request = request
+        return new_order
 #주문 상태를 자동으로 업데이트 시켜주는 프로세스를 Facade 패턴으로 구현    
 class DeliveryProcess:
     def __init__(self, restaurant_db):
         self.observer = DeliveryObserver()
+        self.restaurant_db = restaurant_db
         self.proto_order = OrderPrototype(restaurant_db)
-        self.current_order, self.restaurant = self.proto_order.create()
+        self.current_order = None
+
+    def get_user_input(self):
+        # DeliveryApp 호출하여 pygame에서 주문 정보를 입력 받고 self.current_order 업데이트
+        app = DeliveryApp(self.restaurant_db, self.current_order)
+        user_inputs = app.get_user_input()
+        return self.proto_order.create(*user_inputs)
+
+    def order_process(self):
+        self.current_order = self.get_user_input()
+        self.restaurant = self.restaurant_db.get_restaurant(self.current_order.restaurant_name)
         self.restaurant.register(self.observer)
         self.cooking_time = sum(self.restaurant.menu[food][1] for food in self.current_order.food)
         self.vehicle = self.current_order.vehicle
         self.delivery_time = self.current_order.delivery_time
-        
-    def update_state(self, states):
-        if states:
-            self.restaurant.setState(states[0])
-            if states[0] == "요리 중":
-                self.observer.root.after(self.cooking_time * 1000, self.update_state, states[1:])
-            elif states[0] == "배달 중":
-                self.observer.start_ui(self.vehicle, self.delivery_time)
-                self.update_state(states[1:])
-            elif states[0] == "배달 완료":
-                receipt_text = self.current_order.receipt()
-                self.observer.show_receipt(receipt_text)
-            else:
-                self.observer.root.after(1000, self.update_state, states[1:])
 
-    def order_process(self):
         states = ["주문 접수", "요리 중", "배달 출발", "배달 중", "배달 완료"]
         self.update_state(states)
         self.observer.root.mainloop()

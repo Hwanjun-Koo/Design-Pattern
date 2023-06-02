@@ -1,104 +1,40 @@
 import pygame
-import time
-from DeliveryService import Restaurant, RestaurantDatabase, OrderPrototype, DeliveryProcess
 
-# Pygame 화면 크기 설정
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-
-# Pygame 색상 정의
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-
-# 주문 화면을 구현할 DeliveryApplication 클래스
-class DeliveryApplication:
-    def __init__(self):
-        self.restaurant_db = RestaurantDatabase()
-        self.order_proto = OrderPrototype(self.restaurant_db)
-        self.current_order = None
-        self.selected_restaurant = None
-        self.selected_food = []
-        self.selected_vehicle = None
-        self.delivery_time = None
-        self.screen = None
-        self.clock = None
-        self.font = None
-
-    def initialize(self):
+class DeliveryApp:
+    def __init__(self, restaurant_db, current_order):
+        self.restaurant_db = restaurant_db
+        self.current_order = current_order
+        self.prompt = ["식당을 골라주세요", "음식을 선택해주세요", "고객 이름을 입력해주세요", "배달 주소를 입력해주세요", "차량을 선택해주세요", "플라스틱 사용 여부를 입력해주세요(True/False)", "요청 사항을 입력해주세요"]
+        self.input_list = [""] * len(self.prompt)  # Initialize the list with empty strings
+        self.current_input = 0
+        self.font_path = "C:/Windows/Fonts/malgun.ttf"  # 한글을 지원하는 폰트 파일 경로
+        
+    def get_user_input(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        self.clock = pygame.time.Clock()
-        self.font = pygame.font.Font(None, 30)
-
-    def draw_text(self, text, x, y, color=BLACK):
-        text_surface = self.font.render(text, True, color)
-        self.screen.blit(text_surface, (x, y))
-
-    def draw_menu(self):
-        self.screen.fill(WHITE)
-        self.draw_text("다음 중 식당을 선택해 주세요.", 10, 10)
-        
-        restaurant_names = [restaurant.name for restaurant in self.restaurant_db.get_all()]
-        for i, restaurant_name in enumerate(restaurant_names, start=1):
-            self.draw_text(f"{i}. {restaurant_name}", 10, 40 + i * 30)
-        
-    def handle_event(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_1:
-                self.selected_restaurant = self.restaurant_db.get_restaurant(restaurant_names[0])
-                self.draw_food_menu()
-            elif event.key == pygame.K_2:
-                self.selected_restaurant = self.restaurant_db.get_restaurant(restaurant_names[1])
-                self.draw_food_menu()
-            elif event.key == pygame.K_RETURN:
-                self.place_order()
-        
-    def draw_food_menu(self):
-        self.screen.fill(WHITE)
-        self.draw_text("다음 중 음식을 선택해 주세요.", 10, 10)
-        
-        self.selected_food = []
-        food_list = list(self.selected_restaurant.menu.keys())
-        for i, food in enumerate(food_list, start=1):
-            self.draw_text(f"{i}. {food}", 10, 40 + i * 30)
-        
-    def draw_vehicle_menu(self):
-        self.screen.fill(WHITE)
-        self.draw_text("배달 방법을 선택해 주세요.", 10, 10)
-        
-        self.selected_vehicle = None
-        vehicle_list = list(self.selected_restaurant.vehicles.keys())
-        for i, vehicle in enumerate(vehicle_list, start=1):
-            self.draw_text(f"{i}. {vehicle}", 10, 40 + i * 30)
-        
-    def place_order(self):
-        self.current_order, self.selected_restaurant = self.order_proto.create()
-        self.current_order.food = self.selected_food
-        self.current_order.vehicle = self.selected_vehicle
-        
-        self.delivery_time = self.selected_restaurant.vehicles[self.selected_vehicle]
-        
-        self.delivery = DeliveryProcess(self.restaurant_db)
-        self.delivery.current_order = self.current_order
-        self.delivery.restaurant = self.selected_restaurant
-        self.delivery.delivery_time = self.delivery_time
-        
-        pygame.quit()
-        self.delivery.order_process()
-
-    def start(self):
-        self.initialize()
+        self.font = pygame.font.Font(self.font_path, 36)
+        self.screen = pygame.display.set_mode((800, 600))
         running = True
-        
         while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                self.handle_event(event)
-                    
-            pygame.display.update()
-            self.clock.tick(60) 
-
-# 주문 화면 실행
-app = DeliveryApplication()
-app.start()
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:  # Enter key
+                        if self.current_input < len(self.prompt) - 1:
+                            self.current_input += 1
+                        else:
+                            self.current_order = self.restaurant_db.create(*self.input_list)
+                            self.input_list = [""] * len(self.prompt)
+                            self.current_input = 0
+                    elif event.key == pygame.K_BACKSPACE:  # Backspace key
+                        self.input_list[self.current_input] = self.input_list[self.current_input][:-1]
+                    else:
+                        self.input_list[self.current_input] += event.unicode
+            # Render the current input string
+            self.screen.fill((0, 0, 0))
+            font = pygame.font.Font(None, 36)
+            for i in range(len(self.prompt)):
+                text = self.font.render(self.prompt[i] + ": " + self.input_list[i], True, (255, 255, 255))
+                self.screen.blit(text, (20, 20 + 40 * i))
+            pygame.display.flip()
+        pygame.quit()
