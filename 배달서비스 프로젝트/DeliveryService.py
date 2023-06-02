@@ -175,5 +175,5 @@ restaurant_db.add_restaurant(Restaurant("상하이 반점", {"짜장면": (7000,
 restaurant_db.add_restaurant(Restaurant("호나준 스시", {"스페셜 특선 초밥(16pcs)": (
     17000, 5),  "오늘의 초밥(12pcs)": (15000, 3), "연어 초밥(12pcs)": (12000, 3)}, {"도보": 5, "오토바이": 2}))
 
-delivery = DeliveryProcess(restaurant_db)
+delivery = DeliveryProcess(restaurant_db)   
 delivery.order_process()
