@@ -1,6 +1,7 @@
 import time
 import copy
 import tkinter as tk
+import geopy
 from DeliveryUI import DeliveryUI
 
 #배달 상태를 관찰하고 알림을 보내는 옵저버 생성
@@ -50,8 +51,8 @@ class DeliveryObserver(Observer):
         else:
             print(f"현재 배달 상태: {state}")
             
-    def start_ui(self, delivery_time):
-        ui = DeliveryUI(delivery_time)
+    def start_ui(self, vehicle, delivery_time):
+        ui = DeliveryUI(vehicle, delivery_time)
         ui.start()
 #옵저버가 관찰할 식당   
 class Restaurant:
@@ -140,29 +141,30 @@ class OrderPrototype:
         for i, restaurant_name in enumerate(restaurant_names, start=1):
             print(f"{i}. {restaurant_name}")
         chosen_restaurant = self.restaurant_db.get_restaurant(restaurant_names[int(input()) - 1])
+        print("선택한 식당: " + chosen_restaurant.name)
+        time.sleep(0.5)
         
         print("다음 중 음식을 선택해 주세요")
         time.sleep(0.5)
         for i, (food, _) in enumerate(chosen_restaurant.menu.items(), start=1):
             print(f"{i}. {food}")
-        food_choices = input("메뉴 앞 번호를 입력해 주세요(복수 선택 가능, 공백으로 구분해주세요): ").split(" ")
+        food_choices = input("메뉴 번호를 입력해 주세요(복수 선택 가능, 공백으로 구분해주세요): ").split(" ")
         food_list= []
         for choice in food_choices:
             food_index = int(choice.strip()) - 1
             chosen_food = list(chosen_restaurant.menu.keys())[food_index]
             food_list.append(chosen_food)
-      
+        print("<<선택한 메뉴>>" )
         print(food_list)
         
         self.order.food = food_list
         self.order.customer = input("주문자 이름: ")
         self.order.address = input("배달할 주소: ")
         print("배달 방법: ")
-        for i, (vehicle, _) in enumerate(chosen_restaurant.vehicles.items(), start=1):
+        for i, vehicle in enumerate(chosen_restaurant.vehicles, start=1):
             print(f"{i}. {vehicle}")
         vehicle_choice = int(input()) - 1
-        chosen_vehicle = list(chosen_restaurant.vehicles.keys())[vehicle_choice]
-        self.order.delivery_time = chosen_restaurant.vehicles[chosen_vehicle]
+        chosen_vehicle = chosen_restaurant.vehicles[vehicle_choice]
         
         self.order.plastic = bool(input("일회용품 사용하시나요? (예: y키 입력 후 Enter키, 아니오: Enter키) "))
         self.order.request = input("추가 요청 사항: ")
@@ -170,6 +172,22 @@ class OrderPrototype:
         self.order.restaurant_name = chosen_restaurant.name
         self.order.vehicle = chosen_vehicle
         return self.order.clone(), chosen_restaurant
+    
+class DeliveryTimeCalculator:
+    def __init__(self):
+        self.delivery_time_factors = {
+            "도보": 0.2,  # 거리에 0.2를 곱한 값으로 배달 시간을 산출
+            "오토바이": 0.1,  # 거리에 0.1을 곱한 값으로 배달 시간을 산출
+        }
+
+    def calculate_delivery_time(self, distance, vehicle):
+        fixed_distance = 10  # 임의로 거리를 10km로 고정
+        if vehicle in self.delivery_time_factors:
+            factor = self.delivery_time_factors[vehicle]
+            delivery_time = fixed_distance * factor
+            return delivery_time
+        else:
+            return 0
     
         
 
@@ -181,7 +199,9 @@ class DeliveryProcess:
         self.current_order, self.restaurant = self.proto_order.create()
         self.restaurant.register(self.observer)
         self.cooking_time = sum(self.restaurant.menu[food][1] for food in self.current_order.food)
-        self.delivery_time = self.current_order.delivery_time
+        self.delivery_time_calculator = DeliveryTimeCalculator()
+        
+    
         
     def update_state(self, states):
         if states:
@@ -189,7 +209,10 @@ class DeliveryProcess:
             if states[0] == "요리 중":
                 self.observer.root.after(self.cooking_time * 1000, self.update_state, states[1:])
             elif states[0] == "배달 중":
-                self.observer.start_ui(self.delivery_time)
+                distance = 10
+                self.vehicle = self.current_order.vehicle
+                self.delivery_time = self.delivery_time_calculator.calculate_delivery_time(distance, self.vehicle)
+                self.observer.start_ui(self.vehicle, self.delivery_time)
                 self.update_state(states[1:])
             elif states[0] == "배달 완료":
                 receipt_text = self.current_order.receipt()
@@ -206,8 +229,8 @@ class DeliveryProcess:
 restaurant_db = RestaurantDatabase()
 
 # 식당과 메뉴를 추가.
-restaurant_db.add_restaurant(Restaurant("상하이 반점", {"짜장면": (7000, 3),  "탕수육": (15000, 5), "짬뽕": (8000, 3)}, {"도보": 5, "오토바이": 2}))
-restaurant_db.add_restaurant(Restaurant("호나준 스시", {"스페셜 특선 초밥(16pcs)": (17000, 5),  "오늘의 초밥(12pcs)": (15000, 3), "연어 초밥(12pcs)": (12000, 3)}, {"도보": 5, "오토바이": 2}))
+restaurant_db.add_restaurant(Restaurant("상하이 반점", {"짜장면": (7000, 3), "탕수육": (15000, 5), "짬뽕": (8000, 3)}, ["도보", "오토바이"]))
+restaurant_db.add_restaurant(Restaurant("호나준 스시", {"스페셜 특선 초밥(16pcs)": (17000, 5), "오늘의 초밥(12pcs)": (15000, 3), "연어 초밥(12pcs)": (12000, 3)}, ["도보", "오토바이"]))
 
 delivery = DeliveryProcess(restaurant_db)
 delivery.order_process()
