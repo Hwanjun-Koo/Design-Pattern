@@ -6,19 +6,22 @@ class DeliveryUI:
         self.screen_width = 800
         self.screen_height = 600
         
-        self.deliver_width = 80
-        self.deliver_height = 80
+        self.deliver_width = 100
+        self.deliver_height = 100
         
         self.x = 0
         self.y = self.screen_height // 2 - self.deliver_height // 2
         
         self.vehicle = vehicle
         
-        self.bike_image = pygame.image.load(r"C:\Users\kooju\OneDrive\바탕 화면\잡동사니\오토바이 아이콘.png")
+        self.bike_image = pygame.image.load("오토바이 아이콘.png")
         self.bike_image = pygame.transform.scale(self.bike_image, (self.deliver_width, self.deliver_height))
         
-        self.walking_image = pygame.image.load(r"C:\Users\kooju\OneDrive\바탕 화면\잡동사니\도보 아이콘.png")
+        self.walking_image = pygame.image.load("도보 아이콘.png")
         self.walking_image = pygame.transform.scale(self.walking_image, (self.deliver_width, self.deliver_height))
+        
+        self.bicycle_image = pygame.image.load("자전거 아이콘.png")
+        self.bicycle_image = pygame.transform.scale(self.bicycle_image, (self.deliver_width, self.deliver_height)) 
 
         self.delivery_time = delivery_time
         self.deliver_speed = self.screen_width / (self.deliver_width * self.delivery_time)
@@ -39,6 +42,9 @@ class DeliveryUI:
     def draw_bike(self):
         self.screen.blit(self.bike_image, (self.x, self.y))
         
+    def draw_bicylce(self):
+        self.screen.blit(self.bicycle_image, (self.x, self.y))
+        
     def start(self):
         running = True
         while running:
@@ -53,6 +59,8 @@ class DeliveryUI:
                 self.draw_walking()
             elif self.vehicle == "오토바이":
                 self.draw_bike()
+            elif self.vehicle == "자전거":
+                self.draw_bicylce()
             pygame.display.update()
             
             if self.x + self.deliver_width >= self.screen_width:
